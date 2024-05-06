@@ -2,35 +2,34 @@ const express = require('express');
 const cors = require('cors');
 const k8s = require('@kubernetes/client-node');
 
-// Initialize Express
 const app = express();
-const port = 3001; // Adjust the port if needed
+const port = 3001; // Make sure this does not conflict with other services
 
-// Middleware Setup
-app.use(cors());
-app.use(express.json());
-
-// Initialize Kubernetes Client
+// Kubernetes client setup
 const kc = new k8s.KubeConfig();
-kc.loadFromDefault(); // Loads the configuration from the default kubeconfig location
+kc.loadFromDefault();
 
 const coreV1Api = kc.makeApiClient(k8s.CoreV1Api);
 
-// List Namespaces Endpoint
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Route to list namespaces
 app.get('/namespaces', async (req, res) => {
     try {
         const { body } = await coreV1Api.listNamespace();
         res.send(body.items.map(ns => ns.metadata.name));
     } catch (err) {
-        console.error('Error listing namespaces:', err);
+        console.error('Failed to list namespaces:', err);
         res.status(500).send('Failed to list namespaces');
     }
 });
 
-// List Pods Endpoint
+// Route to list pods
 app.get('/pods', async (req, res) => {
     try {
-        const namespace = req.query.namespace || 'default'; // Defaults to the 'default' namespace
+        const namespace = req.query.namespace || 'default'; // Use query to select namespace or default
         const { body } = await coreV1Api.listNamespacedPod(namespace);
         res.send(body.items.map(pod => ({
             name: pod.metadata.name,
@@ -38,15 +37,15 @@ app.get('/pods', async (req, res) => {
             status: pod.status.phase
         })));
     } catch (err) {
-        console.error(`Error listing pods in namespace ${req.query.namespace}:`, err);
+        console.error(`Failed to list pods in namespace ${req.query.namespace}:`, err);
         res.status(500).send('Failed to list pods');
     }
 });
 
-// List ConfigMaps Endpoint
+// Route to list ConfigMaps
 app.get('/configmaps', async (req, res) => {
     try {
-        const namespace = req.query.namespace || 'default'; // Defaults to the 'default' namespace
+        const namespace = req.query.namespace || 'default'; // Use query to select namespace or default
         const { body } = await coreV1Api.listNamespacedConfigMap(namespace);
         res.send(body.items.map(cm => ({
             name: cm.metadata.name,
@@ -54,12 +53,12 @@ app.get('/configmaps', async (req, res) => {
             data: cm.data
         })));
     } catch (err) {
-        console.error(`Error listing configmaps in namespace ${req.query.namespace}:`, err);
-        res.status(500).send('Failed to list configmaps');
+        console.error(`Failed to list ConfigMaps in namespace ${req.query.namespace}:`, err);
+        res.status(500).send('Failed to list ConfigMaps');
     }
 });
 
-// Start the Server
+// Start server
 app.listen(port, () => {
-    console.log(`Kubernetes API server is running on http://localhost:${port}`);
+    console.log(`Server running on http://localhost:${port}`);
 });
